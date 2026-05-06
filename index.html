@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Mood Journal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c28;
+      --border: #2a2a3d;
+      --accent: #7c6af7;
+      --accent2: #f06292;
+      --gold: #f4c842;
+      --text: #e8e8f0;
+      --muted: #7878a0;
+      --success: #4caf82;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 20% 20%, rgba(124,106,247,0.08) 0%, transparent 50%),
+                  radial-gradient(ellipse at 80% 80%, rgba(240,98,146,0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 50% 50%, rgba(244,200,66,0.03) 0%, transparent 60%);
+      animation: bgPulse 12s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bgPulse {
+      0% { transform: scale(1) rotate(0deg); }
+      100% { transform: scale(1.1) rotate(3deg); }
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      padding: 3rem 0 2.5rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+      font-weight: 500;
+    }
+
+    .logo-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.1;
+      background: linear-gradient(135deg, var(--text) 0%, var(--accent) 60%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.8rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      font-weight: 300;
+    }
+
+    /* API Key Banner */
+    #api-banner {
+      background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(240,98,146,0.1));
+      border: 1px solid rgba(124,106,247,0.3);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    #api-banner.hidden { display: none; }
+
+    #api-banner p {
+      flex: 1;
+      font-size: 0.88rem;
+      color: var(--muted);
+      min-width: 200px;
+    }
+
+    #api-banner p strong { color: var(--text); }
+
+    .api-input-group {
+      display: flex;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    #api-key-input {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #api-key-input:focus { border-color: var(--accent); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.65rem 1.2rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #9c6af7);
+      color: #fff;
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,106,247,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Journal Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.8rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.3rem;
+      color: var(--text);
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      resize: vertical;
+      min-height: 160px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.1);
+    }
+
+    textarea::placeholder { color: var(--muted); font-style: italic; }
+
+    .journal-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* Mood Result */
+    #result-section {
+      display: none;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mood-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .mood-badge.happy    { background: rgba(76,175,130,0.15); color: #4caf82; border: 1px solid rgba(76,175,130,0.3); }
+    .mood-badge.sad      { background: rgba(100,130,220,0.15); color: #6482dc; border: 1px solid rgba(100,130,220,0.3); }
+    .mood-badge.anxious  { background: rgba(244,200,66,0.15);  color: var(--gold); border: 1px solid rgba(244,200,66,0.3); }
+    .mood-badge.angry    { background: rgba(240,98,98,0.15);   color: #f06262; border: 1px solid rgba(240,98,98,0.3); }
+    .mood-badge.neutral  { background: rgba(120,120,160,0.15); color: var(--muted); border: 1px solid rgba(120,120,160,0.3); }
+    .mood-badge.stressed { background: rgba(240,98,146,0.15);  color: var(--accent2); border: 1px solid rgba(240,98,146,0.3); }
+    .mood-badge.excited  { background: rgba(244,200,66,0.15);  color: var(--gold); border: 1px solid rgba(244,200,66,0.3); }
+
+    .result-text {
+      font-size: 0.97rem;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 1rem 0;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* History */
+    #history-section { margin-top: 2.5rem; }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+
+    .history-header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: var(--text);
+    }
+
+    .history-empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .history-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .history-item:hover {
+      border-color: rgba(124,106,247,0.4);
+      transform: translateX(4px);
+    }
+
+    .history-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .history-date {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .history-preview {
+      font-size: 0.88rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Detail Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.2rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.3rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.2rem;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 1.2rem 0;
+    }
+
+    .modal-original {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+
+    /* Toasts */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem 1.2rem;
+      font-size: 0.88rem;
+      color: var(--text);
+      z-index: 200;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+      max-width: 280px;
+    }
+
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.error { border-color: rgba(240,98,98,0.4); color: #f06262; }
+    #toast.success { border-color: rgba(76,175,130,0.4); color: var(--success); }
+
+    /* Mood emoji map */
+    .mood-emoji { font-size: 1.1rem; }
+
+    @media (max-width: 500px) {
+      .journal-actions { flex-direction: column; align-items: stretch; }
+      .btn { justify-content: center; }
+      #api-banner { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <span class="logo-dot"></span>
+      AI Powered
+      <span class="logo-dot"></span>
+    </div>
+    <h1>Mood Journal</h1>
+    <p class="subtitle">Write how you feel. Let AI understand you.</p>
+  </header>
+
+  <!-- API Key Banner -->
+  <div id="api-banner">
+    <p><strong>🔑 One-time setup:</strong> Enter your free Anthropic API key to power the AI. <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">Get one here →</a></p>
+    <div class="api-input-group">
+      <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+      <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+    </div>
+  </div>
+
+  <!-- Journal Entry -->
+  <div class="card">
+    <div class="card-title">📝 Today's Entry</div>
+    <textarea id="journal-input" placeholder="How are you feeling today? Write freely — there's no wrong answer. Tell me about your day, your thoughts, what's on your mind..." maxlength="2000"></textarea>
+    <div class="journal-actions">
+      <span class="char-count" id="char-count">0 / 2000</span>
+      <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="clearEntry()">Clear</button>
+        <button class="btn btn-primary" id="analyze-btn" onclick="analyzeEntry()">
+          ✨ Analyze My Mood
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" style="display:none">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>Reading your emotions...</span>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result-section">
+    <div class="card">
+      <div class="card-title">🤖 AI Analysis</div>
+      <div id="mood-badge-container"></div>
+      <div class="result-text" id="result-text"></div>
+      <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveEntry()">💾 Save to Journal</button>
+        <button class="btn btn-ghost" onclick="newEntry()">Write Another</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="history-section">
+    <div class="history-header">
+      <h2>Journal History</h2>
+      <button class="btn btn-ghost" onclick="clearHistory()" style="font-size:0.8rem;padding:0.4rem 0.8rem">Clear All</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="modal-badge"></div>
+        <div id="modal-date" style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-original" id="modal-original"></div>
+    <div class="divider"></div>
+    <div class="result-text" id="modal-analysis"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let apiKey = localStorage.getItem('mj_api_key') || '';
+  let currentAnalysis = null;
+  let currentMood = null;
+
+  const moodEmojis = {
+    happy: '😊', sad: '😔', anxious: '😰', angry: '😠',
+    neutral: '😐', stressed: '😤', excited: '🎉', surprised: '😲',
+    content: '😌', lonely: '🥺', grateful: '🙏', overwhelmed: '😵'
+  };
+
+  // ── Init ──────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    if (apiKey) document.getElementById('api-banner').classList.add('hidden');
+    loadHistory();
+    document.getElementById('journal-input').addEventListener('input', updateCharCount);
+  });
+
+  function updateCharCount() {
+    const val = document.getElementById('journal-input').value;
+    document.getElementById('char-count').textContent = `${val.length} / 2000`;
+  }
+
+  // ── API Key ───────────────────────────────────────────
+  function saveApiKey() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key.startsWith('sk-ant-')) {
+      showToast('API key should start with sk-ant-', 'error');
+      return;
+    }
+    apiKey = key;
+    localStorage.setItem('mj_api_key', key);
+    document.getElementById('api-banner').classList.add('hidden');
+    showToast('API key saved! ✓', 'success');
+  }
+
+  // ── Analyze ───────────────────────────────────────────
+  async function analyzeEntry() {
+    const entry = document.getElementById('journal-input').value.trim();
+
+    if (!apiKey) {
+      showToast('Please enter your API key first', 'error');
+      return;
+    }
+    if (entry.length < 10) {
+      showToast('Write a bit more so AI can understand you 😊', 'error');
+      return;
+    }
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('analyze-btn').disabled = true;
+
+    const prompt = `You are a compassionate, insightful mood journal AI. Analyze this journal entry and respond with ONLY valid JSON (no markdown, no backticks):
+
+{
+  "mood": "one of: happy, sad, anxious, angry, neutral, stressed, excited, content, lonely, grateful, overwhelmed",
+  "intensity": "low | medium | high",
+  "summary": "One sentence describing their emotional state",
+  "analysis": "2-3 sentences about what you notice in their writing and emotions",
+  "advice": "2-3 actionable, warm, specific suggestions for them right now",
+  "affirmation": "One powerful, personalized affirmation based on what they shared"
+}
+
+Journal entry:
+"${entry}"`;
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'API error');
+      }
+
+      const data = await resp.json();
+      const raw = data.content[0].text.replace(/```json|```/g, '').trim();
+      const result = JSON.parse(raw);
+
+      currentAnalysis = result;
+      currentMood = result.mood;
+
+      displayResult(result);
+
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+      console.error(err);
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('analyze-btn').disabled = false;
+    }
+  }
+
+  function displayResult(result) {
+    const section = document.getElementById('result-section');
+    const emoji = moodEmojis[result.mood] || '💭';
+
+    document.getElementById('mood-badge-container').innerHTML = `
+      <div class="mood-badge ${result.mood}">
+        <span class="mood-emoji">${emoji}</span>
+        ${capitalize(result.mood)} · ${capitalize(result.intensity)} intensity
+      </div>
+    `;
+
+    document.getElementById('result-text').textContent =
+      `${result.summary}\n\n📖 What I Notice\n${result.analysis}\n\n💡 Suggestions For You\n${result.advice}\n\n✨ Your Affirmation\n"${result.affirmation}"`;
+
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Save / Clear ──────────────────────────────────────
+  function saveEntry() {
+    const entry = document.getElementById('journal-input').value.trim();
+    if (!currentAnalysis) return;
+
+    const history = getHistory();
+    history.unshift({
+      id: Date.now(),
+      date: new Date().toISOString(),
+      entry,
+      analysis: currentAnalysis
+    });
+    localStorage.setItem('mj_history', JSON.stringify(history));
+
+    showToast('Entry saved to journal ✓', 'success');
+    loadHistory();
+    newEntry();
+  }
+
+  function clearEntry() {
+    document.getElementById('journal-input').value = '';
+    updateCharCount();
+    document.getElementById('result-section').style.display = 'none';
+    currentAnalysis = null;
+  }
+
+  function newEntry() {
+    clearEntry();
+    document.getElementById('journal-input').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── History ───────────────────────────────────────────
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem('mj_history') || '[]'); }
+    catch { return []; }
+  }
+
+  function loadHistory() {
+    const history = getHistory();
+    const list = document.getElementById('history-list');
+    const section = document.getElementById('history-section');
+
+    if (history.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    list.innerHTML = history.map(item => {
+      const emoji = moodEmojis[item.analysis.mood] || '💭';
+      const date = new Date(item.date).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      return `
+        <div class="history-item" onclick="openModal(${item.id})">
+          <div class="history-meta">
+            <div class="mood-badge ${item.analysis.mood}" style="margin-bottom:0;padding:0.2rem 0.7rem;font-size:0.78rem">
+              ${emoji} ${capitalize(item.analysis.mood)}
+            </div>
+            <span class="history-date">${date}</span>
+          </div>
+          <div class="history-preview">${item.entry}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openModal(id) {
+    const history = getHistory();
+    const item = history.find(h => h.id === id);
+    if (!item) return;
+
+    const emoji = moodEmojis[item.analysis.mood] || '💭';
+    const date = new Date(item.date).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    });
+    const r = item.analysis;
+
+    document.getElementById('modal-badge').innerHTML = `
+      <div class="mood-badge ${r.mood}" style="margin-bottom:0">
+        ${emoji} ${capitalize(r.mood)} · ${capitalize(r.intensity)} intensity
+      </div>`;
+    document.getElementById('modal-date').textContent = date;
+    document.getElementById('modal-original').textContent = `"${item.entry}"`;
+    document.getElementById('modal-analysis').textContent =
+      `${r.summary}\n\n📖 What I Noticed\n${r.analysis}\n\n💡 Suggestions\n${r.advice}\n\n✨ Affirmation\n"${r.affirmation}"`;
+
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal(e) {
+    if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open');
+  }
+
+  function clearHistory() {
+    if (!confirm('Delete all journal entries? This cannot be undone.')) return;
+    localStorage.removeItem('mj_history');
+    loadHistory();
+    showToast('History cleared', 'success');
+  }
+
+  // ── Toast ─────────────────────────────────────────────
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = type ? `show ${type}` : 'show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = ''; }, 3000);
+  }
+
+  function capitalize(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  }
+</script>
+</body>
+</html>
